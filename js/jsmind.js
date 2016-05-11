@@ -1,13 +1,13 @@
 /*
  * Released under BSD License
  * Copyright (c) 2014-2015 hizzgdev@163.com
- * 
+ *
  * Project Home:
  *   https://github.com/hizzgdev/jsmind/
  */
 
 (function($w){
-    'use strict';       
+    'use strict';
     // set 'jsMind' as the library name.
     // __name__ should be a const value, Never try to change it easily.
     var __name__ = 'jsMind';
@@ -67,6 +67,7 @@
                 up         : 38, // Up
                 right      : 39, // Right
                 down       : 40, // Down
+                tab        :  9,
             }
         },
     };
@@ -95,13 +96,14 @@
     jm.direction = {left:-1,center:0,right:1};
     jm.event_type = {show:1,resize:2,edit:3,select:4};
 
-    jm.node = function(sId,iIndex,sTopic,oData,bIsRoot,oParent,eDirection,bExpanded){
+    jm.node = function(sId,iIndex,sTopic,sLnk,oData,bIsRoot,oParent,eDirection,bExpanded){
         if(!sId){logger.error('invalid nodeid');return;}
         if(typeof iIndex != 'number'){logger.error('invalid node index');return;}
         if(typeof bExpanded === 'undefined'){bExpanded = true;}
         this.id = sId;
         this.index = iIndex;
         this.topic = sTopic;
+        this.lnk = sLnk;
         this.data = oData;
         this.isroot = bIsRoot;
         this.parent = oParent;
@@ -188,18 +190,18 @@
             }
         },
 
-        set_root:function(nodeid, topic, data){
+        set_root:function(nodeid, topic, lnk, data){
             if(this.root == null){
-                this.root = new jm.node(nodeid, 0, topic, data, true);
+                this.root = new jm.node(nodeid, 0, topic, lnk, data, true);
                 this._put_node(this.root);
             }else{
                 logger.error('root node is already exist');
             }
         },
 
-        add_node:function(parent_node, nodeid, topic, data, idx, direction, expanded){
+        add_node:function(parent_node, nodeid, topic, lnk, data, idx, direction, expanded){
             if(typeof parent_node === 'string'){
-                return this.add_node(this.get_node(parent_node), nodeid, topic, data, idx, direction, expanded);
+                return this.add_node(this.get_node(parent_node), nodeid, topic, lnk, data, idx, direction, expanded);
             }
             var nodeindex = idx || -1;
             if(!!parent_node){
@@ -216,9 +218,9 @@
                     }else{
                         d = (direction != jm.direction.left) ? jm.direction.right : jm.direction.left;
                     }
-                    node = new jm.node(nodeid,nodeindex,topic,data,false,parent_node,d,expanded);
+                    node = new jm.node(nodeid,nodeindex,topic,lnk,data,false,parent_node,d,expanded);
                 }else{
-                    node = new jm.node(nodeid,nodeindex,topic,data,false,parent_node,parent_node.direction,expanded);
+                    node = new jm.node(nodeid,nodeindex,topic,lnk,data,false,parent_node,parent_node.direction,expanded);
                 }
                 if(this._put_node(node)){
                     parent_node.children.push(node);
@@ -234,13 +236,13 @@
             }
         },
 
-        insert_node_before:function(node_before, nodeid, topic, data){
+        insert_node_before:function(node_before, nodeid, topic, lnk, data){
             if(typeof node_before === 'string'){
-                return this.insert_node_before(this.get_node(node_before), nodeid, topic, data);
+                return this.insert_node_before(this.get_node(node_before), nodeid, topic, lnk, data);
             }
             if(!!node_before){
                 var node_index = node_before.index-0.5;
-                return this.add_node(node_before.parent, nodeid, topic, data, node_index);
+                return this.add_node(node_before.parent, nodeid, topic, lnk, data, node_index);
             }else{
                 logger.error('fail, the [node_before] can not be found.');
                 return null;
@@ -261,13 +263,13 @@
             }
         },
 
-        insert_node_after:function(node_after, nodeid, topic, data){
+        insert_node_after:function(node_after, nodeid, topic, lnk, data){
             if(typeof node_after === 'string'){
-                return this.insert_node_after(this.get_node(node_after), nodeid, topic, data);
+                return this.insert_node_after(this.get_node(node_after), nodeid, topic, lnk, data);
             }
             if(!!node_after){
                 var node_index = node_after.index + 0.5;
-                return this.add_node(node_after.parent, nodeid, topic, data, node_index);
+                return this.add_node(node_after.parent, nodeid, topic, lnk, data, node_index);
             }else{
                 logger.error('fail, the [node_after] can not be found.');
                 return null;
@@ -434,7 +436,7 @@
                     "version":__version__
                 },
                 "format":"node_tree",
-                "data":{"id":"root","topic":"jsMind Example"}
+                "data":{"id":"root","topic":"jsMind Example", "lnk": "www.google.com"}
             },
             get_mind:function(source){
                 var df = jm.format.node_tree;
@@ -461,7 +463,7 @@
             _parse:function(mind, node_root){
                 var df = jm.format.node_tree;
                 var data = df._extract_data(node_root);
-                mind.set_root(node_root.id, node_root.topic, data);
+                mind.set_root(node_root.id, node_root.topic,node_root.lnk, data);
                 if('children' in node_root){
                     var children = node_root.children;
                     for(var i=0;i<children.length;i++){
@@ -473,7 +475,7 @@
             _extract_data:function(node_json){
                 var data = {};
                 for(var k in node_json){
-                    if(k == 'id' || k=='topic' || k=='children' || k=='direction' || k=='expanded'){
+                    if(k == 'id' || k=='topic' || k=='lnk'|| k=='children' || k=='direction' || k=='expanded'){
                         continue;
                     }
                     data[k] = node_json[k];
@@ -488,7 +490,7 @@
                 if(node_parent.isroot){
                     d = node_json.direction == 'left'?jm.direction.left:jm.direction.right;
                 }
-                var node = mind.add_node(node_parent, node_json.id, node_json.topic, data, null, d, node_json.expanded);
+                var node = mind.add_node(node_parent, node_json.id, node_json.topic, node_json.lnk, data, null, d, node_json.expanded);
                 if('children' in node_json){
                     var children = node_json.children;
                     for(var i=0;i<children.length;i++){
@@ -503,6 +505,7 @@
                 var o = {
                     id : node.id,
                     topic : node.topic,
+                    lnk: node.lnk,
                     expanded : node.expanded
                 };
                 if(!!node.parent && node.parent.isroot){
@@ -534,7 +537,7 @@
                 },
                 "format":"node_array",
                 "data":[
-                    {"id":"root","topic":"jsMind Example", "isroot":true}
+                    {"id":"root","topic":"jsMind Example","lnk":"www.google.ca", "isroot":true}
                 ]
             },
 
@@ -582,7 +585,7 @@
                     if('isroot' in node_array[i] && node_array[i].isroot){
                         var root_json = node_array[i];
                         var data = df._extract_data(root_json);
-                        mind.set_root(root_json.id,root_json.topic,data);
+                        mind.set_root(root_json.id,root_json.topic,root_json.lnk,data);
                         node_array.splice(i,1);
                         return root_json.id;
                     }
@@ -605,7 +608,7 @@
                         if(!!node_direction){
                             d = node_direction == 'left'?jm.direction.left:jm.direction.right;
                         }
-                        mind.add_node(parentid, node_json.id, node_json.topic, data, null, d, node_json.expanded);
+                        mind.add_node(parentid, node_json.id, node_json.topic, node_json.lnk, data, null, d, node_json.expanded);
                         node_array.splice(i,1);
                         extract_count ++;
                         var sub_extract_count = df._extract_subnode(mind, node_json.id, node_array);
@@ -622,7 +625,7 @@
             _extract_data:function(node_json){
                 var data = {};
                 for(var k in node_json){
-                    if(k == 'id' || k=='topic' || k=='parentid' || k=='isroot' || k=='direction' || k=='expanded'){
+                    if(k == 'id' || k=='topic' || k=='parentid' || k=='lnk'|| k=='isroot' || k=='direction' || k=='expanded'){
                         continue;
                     }
                     data[k] = node_json[k];
@@ -641,6 +644,7 @@
                 var o = {
                     id : node.id,
                     topic : node.topic,
+                    lnk: node.lnk,
                     expanded : node.expanded
                 };
                 if(!!node.parent){
@@ -714,7 +718,7 @@
                 }else{ // Internet Explorer
                     xml_doc = new ActiveXObject('Microsoft.XMLDOM');
                     xml_doc.async = false;
-                    xml_doc.loadXML(xml); 
+                    xml_doc.loadXML(xml);
                 }
                 return xml_doc;
             },
@@ -749,6 +753,7 @@
                 var df = jm.format.freemind;
                 var node_id = xml_node.getAttribute('ID');
                 var node_topic = xml_node.getAttribute('TEXT');
+                var node_lnk = xml_node.getAttribute('TEXT');
                 // look for richcontent
                 if(node_topic == null){
                     var topic_children = xml_node.childNodes;
@@ -758,6 +763,19 @@
                         //logger.debug(topic_child.tagName);
                         if(topic_child.nodeType == 1 && topic_child.tagName === 'richcontent'){
                             node_topic = topic_child.textContent;
+                            break;
+                        }
+                    }
+                }
+
+                if(node_lnk == null){
+                    var lnk_children = xml_node.childNodes;
+                    var lnk_child = null;
+                    for(var i=0;i<lnk_children.length;i++){
+                        lnk_child = lnk_children[i];
+                        //logger.debug(topic_child.tagName);
+                        if(lnk_child.nodeType == 1 && lnk_child.tagName === 'richcontent'){
+                            node_lnk = lnk_child.textContent;
                             break;
                         }
                     }
@@ -773,9 +791,9 @@
                 }
                 //logger.debug(node_position +':'+ node_direction);
                 if(!!parent_id){
-                    mind.add_node(parent_id, node_id, node_topic, node_data, null, node_direction, node_expanded);
+                    mind.add_node(parent_id, node_id, node_topic, node_lnk, node_data, null, node_direction, node_expanded);
                 }else{
-                    mind.set_root(node_id, node_topic, node_data);
+                    mind.set_root(node_id, node_topic, node_lnk, node_data);
                 }
                 var children = xml_node.childNodes;
                 var child = null;
@@ -815,6 +833,7 @@
                     xmllines.push('POSITION=\"'+pos+'\"');
                 }
                 xmllines.push('TEXT=\"'+node.topic+'\">');
+                xmllines.push('TEXT=\"'+node.lnk+'\">');
 
                 // store expanded status as an attribute
                 xmllines.push('<attribute NAME=\"expanded\" VALUE=\"'+node.expanded+'\"/>');
@@ -1052,7 +1071,7 @@
                 line_width:opts.view.line_width,
                 line_color:opts.view.line_color
             };
-            // create instance of function provider 
+            // create instance of function provider
             this.data = new jm.data_provider(this);
             this.layout = new jm.layout_provider(this, opts_layout);
             this.view = new jm.view_provider(this, opts_view);
@@ -1248,15 +1267,15 @@
             return this.mind.get_node(nodeid);
         },
 
-        add_node:function(parent_node, nodeid, topic, data){
+        add_node:function(parent_node, nodeid, topic, lnk, data){
             if(this.get_editable()){
-                var node = this.mind.add_node(parent_node, nodeid, topic, data);
+                var node = this.mind.add_node(parent_node, nodeid, topic, lnk, data);
                 if(!!node){
                     this.view.add_node(node);
                     this.layout.layout();
                     this.view.show(false);
                     this.expand_node(parent_node);
-                    this.invoke_event_handle(jm.event_type.edit,{evt:'add_node',data:[parent_node.id,nodeid,topic,data],node:nodeid});
+                    this.invoke_event_handle(jm.event_type.edit,{evt:'add_node',data:[parent_node.id,nodeid,topic,lnk,data],node:nodeid});
                 }
                 return node;
             }else{
@@ -1265,15 +1284,15 @@
             }
         },
 
-        insert_node_before:function(node_before, nodeid, topic, data){
+        insert_node_before:function(node_before, nodeid, topic, link, data){
             if(this.get_editable()){
                 var beforeid = (typeof node_before === 'string') ? node_before : node_before.id;
-                var node = this.mind.insert_node_before(node_before, nodeid, topic, data);
+                var node = this.mind.insert_node_before(node_before, nodeid, topic, lnk, data);
                 if(!!node){
                     this.view.add_node(node);
                     this.layout.layout();
                     this.view.show(false);
-                    this.invoke_event_handle(jm.event_type.edit,{evt:'insert_node_before',data:[beforeid,nodeid,topic,data],node:nodeid});
+                    this.invoke_event_handle(jm.event_type.edit,{evt:'insert_node_before',data:[beforeid,nodeid,topic,lnk,data],node:nodeid});
                 }
                 return node;
             }else{
@@ -1282,14 +1301,14 @@
             }
         },
 
-        insert_node_after:function(node_after, nodeid, topic, data){
+        insert_node_after:function(node_after, nodeid, topic, lnk, data){
             if(this.get_editable()){
-                var node = this.mind.insert_node_after(node_after, nodeid, topic, data);
+                var node = this.mind.insert_node_after(node_after, nodeid, topic, lnk, data);
                 if(!!node){
                     this.view.add_node(node);
                     this.layout.layout();
                     this.view.show(false);
-                    this.invoke_event_handle(jm.event_type.edit,{evt:'insert_node_after',data:[node_after.id,nodeid,topic,data],node:nodeid});
+                    this.invoke_event_handle(jm.event_type.edit,{evt:'insert_node_after',data:[node_after.id,nodeid,topic,lnk,data],node:nodeid});
                 }
                 return node;
             }else{
@@ -1325,7 +1344,7 @@
             }
         },
 
-        update_node:function(nodeid, topic){
+        update_node:function(nodeid, topic, lnk){
             if(this.get_editable()){
                 if(jm.util.text.is_empty(topic)){
                     logger.warn('fail, topic can not be empty');
@@ -1338,11 +1357,17 @@
                         this.view.update_node(node);
                         return;
                     }
+                    if(node.lnk === lnk){
+                        logger.info('nothing changed');
+                        this.view.update_node(node);
+                        return;
+                    }
                     node.topic = topic;
+                    node.lnk = lnk;
                     this.view.update_node(node);
                     this.layout.layout();
                     this.view.show(false);
-                    this.invoke_event_handle(jm.event_type.edit,{evt:'update_node',data:[nodeid,topic],node:nodeid});
+                    this.invoke_event_handle(jm.event_type.edit,{evt:'update_node',data:[nodeid,topic, lnk],node:nodeid});
                 }
             }else{
                 logger.error('fail, this mind map is not editable');
@@ -1931,7 +1956,7 @@
         is_expand:function(node){
             return node.expanded;
         },
-        
+
         is_visible:function(node){
             var layout_data = node._data.layout;
             if(('visible' in layout_data) && !layout_data.visible){
@@ -1950,6 +1975,7 @@
 
         this.container = null;
         this.e_panel = null;
+        this.e_panel2 = null;
         this.e_nodes= null;
         this.e_canvas = null;
 
@@ -1973,6 +1999,7 @@
             this.e_canvas = $c('canvas');
             this.e_nodes = $c('jmnodes');
             this.e_editor = $c('input');
+            this.e_editor2 = $c('input');
 
             this.e_panel.className = 'jsmind-inner';
             this.e_panel.appendChild(this.e_canvas);
@@ -1981,12 +2008,23 @@
             this.e_editor.className = 'jsmind-editor';
             this.e_editor.type = 'text';
 
+             this.e_editor2.className = 'jsmind-editor';
+             this.e_editor2.type = 'text';
+
             var v = this;
             jm.util.dom.add_event(this.e_editor,'keydown',function(e){
                 var evt = e || event;
                 if(evt.keyCode == 13){v.edit_node_end();evt.stopPropagation();}
             });
             jm.util.dom.add_event(this.e_editor,'blur',function(e){
+                v.edit_node_end();
+            });
+
+            jm.util.dom.add_event(this.e_editor2,'keydown',function(e){
+                var evt = e || event;
+                if(evt.keyCode == 9){v.edit_node_end();evt.stopPropagation();}
+            });
+            jm.util.dom.add_event(this.e_editor2,'blur',function(e){
                 v.edit_node_end();
             });
 
@@ -2097,9 +2135,9 @@
                 view_data.expander = d_e;
             }
             if(this.opts.support_html){
-                $h(d,node.topic);
+                $h(d,node.topic, node.lnk);
             }else{
-                $t(d,node.topic);
+                $t(d,node.topic, node.lnk);
             }
             d.setAttribute('nodeid',node.id);
             d.style.visibility='hidden';
@@ -2134,9 +2172,9 @@
             var view_data = node._data.view;
             var element = view_data.element;
             if(this.opts.support_html){
-                $h(element,node.topic);
+                $h(element,node.topic, node.lnk);
             }else{
-                $t(element,node.topic);
+                $t(element,node.topic, node.lnk);
             }
             view_data.width = element.clientWidth;
             view_data.height = element.clientHeight;
@@ -2173,9 +2211,12 @@
             var view_data = node._data.view;
             var element = view_data.element;
             var topic = node.topic;
+            var lnk = node.lnk;
             this.e_editor.value = topic;
+            this.e_editor2.value = lnk;
             element.innerHTML = '';
             element.appendChild(this.e_editor);
+            element.appendChild(this.e_editor2);
             element.style.zIndex = 5;
             this.e_editor.focus();
             this.e_editor.select();
@@ -2188,8 +2229,10 @@
                 var view_data = node._data.view;
                 var element = view_data.element;
                 var topic = this.e_editor.value;
+                var lnk = this.e_editor2.value;
                 element.style.zIndex = 'auto';
                 element.removeChild(this.e_editor);
+                element.removeChild(this.e_editor2);
                 if(jm.util.text.is_empty(topic) || node.topic === topic){
                     if(this.opts.support_html){
                         $h(element,node.topic);
@@ -2198,6 +2241,15 @@
                     }
                 }else{
                     this.jm.update_node(node.id,topic);
+                }
+                if(jm.util.text.is_empty(lnk) || node.lnk === lnk){
+                    if(this.opts.support_html){
+                        $h(element,node.lnk);
+                    }else{
+                        $t(element,node.lnk);
+                    }
+                }else{
+                    this.jm.update_node(node.id,lnk);
                 }
             }
         },
@@ -2343,7 +2395,7 @@
             ctx.strokeStyle = this.opts.line_color;
             ctx.lineWidth = this.opts.line_width;
             ctx.lineCap = 'round';
-            
+
             jm.util.canvas.bezierto(
                 ctx,
                 pin.x + offset.x,
@@ -2405,7 +2457,7 @@
             var selected_node = _jm.get_selected_node();
             if(!!selected_node){
                 var nodeid = jm.util.uuid.newid();
-                var node = _jm.add_node(selected_node, nodeid, 'New Node');
+                var node = _jm.add_node(selected_node, nodeid, 'New Node', 'New Lnk');
                 if(!!node){
                     _jm.select_node(nodeid);
                     _jm.begin_edit(nodeid);
@@ -2416,7 +2468,7 @@
             var selected_node = _jm.get_selected_node();
             if(!!selected_node && !selected_node.isroot){
                 var nodeid = jm.util.uuid.newid();
-                var node = _jm.insert_node_after(selected_node, nodeid, 'New Node');
+                var node = _jm.insert_node_after(selected_node, nodeid, 'New Node', 'New Lnk');
                 if(!!node){
                     _jm.select_node(nodeid);
                     _jm.begin_edit(nodeid);
