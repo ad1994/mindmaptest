@@ -753,7 +753,7 @@
                 var df = jm.format.freemind;
                 var node_id = xml_node.getAttribute('ID');
                 var node_topic = xml_node.getAttribute('TEXT');
-                var node_lnk = xml_node.getAttribute('TEXT');
+                var node_lnk = xml_node.getAttribute('LINK');
                 // look for richcontent
                 if(node_topic == null){
                     var topic_children = xml_node.childNodes;
@@ -832,8 +832,8 @@
                 if(!!pos){
                     xmllines.push('POSITION=\"'+pos+'\"');
                 }
-                xmllines.push('TEXT=\"'+node.topic+'\">');
-                xmllines.push('TEXT=\"'+node.lnk+'\">');
+                xmllines.push('TEXT=\"'+node.topic+'\"');
+                xmllines.push('LINK=\"'+node.lnk+'\">');
 
                 // store expanded status as an attribute
                 xmllines.push('<attribute NAME=\"expanded\" VALUE=\"'+node.expanded+'\"/>');
@@ -1347,6 +1347,10 @@
         update_node:function(nodeid, topic, lnk){
             if(this.get_editable()){
                 if(jm.util.text.is_empty(topic)){
+                    logger.warn('fail, topic can not be empty');
+                    return;
+                }
+                if(jm.util.text.is_empty(lnk)){
                     logger.warn('fail, topic can not be empty');
                     return;
                 }
